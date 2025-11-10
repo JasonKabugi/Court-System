@@ -1,50 +1,90 @@
 <?php
-//Start session
+// Display errors
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Database connection
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "court_db";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
+
 session_start();
 
-//$conn = new mySQL create a connection to the database
-//localhost means the database is on my computer
-//root is the default username
-//"" means that i haven't set a password, perhaps i should put one later
-//court_db is the name of the database
-$conn = new mysqli("localhost", "root", "", "court_db");
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $username = trim($_POST['username'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
-//check the connection
-// mysqli_connect_error() returns the error message if connection failed, or false/null if successful
-// If there's an error, immediately stop script execution and display the error message
-if (mysqli_connect_error()) {die("Database connection failed: " . mysqli_connect_error());}
+    if (empty($username) || empty($password)) {
+        die("Please fill all required fields.");
+    }
 
-//POST receives the data from index.html. thus it will receive the username, email and password
-//im using post since in the index.html form, i used post in the method int=stead of get
-$user_code = $_POST['user_id'];
-$email = $_POST['email'];
-$password = $_POST['password'];
+    $stmt = $conn->prepare("SELECT id, username, password, role FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $stmt->store_result();
 
-// Prepare the SQL statement to fetch the user_id and password. not to sure if it will work but ill revisit if it doesn't
-//i forgot to mention that this line of code looks for a specific user based on their user id and matches with their password. again, i haven't yet tested this but we'll revisit this. 
-//another thing ,($) is a variable starter, i probably didn't explain that properly but if it works, it works. STMT is statement, so thats what i originally meant by im preparing an sql statement
-$stmt = $conn->prepare("SELECT * FROM users WHERE password = ? AND user_id = ?");
+    if ($stmt->num_rows === 1) {
+        $stmt->bind_result($id, $db_username, $hashed_password, $role);
+        $stmt->fetch();
 
-//binds the actual values from the form into the sql
-// SS means the parameters are strings, password and user_id
-//don't know if spacing the parameters affects anything, will come back if anything
-// if things work properly, it'll prevent sql injection
-$stmt->bind_param("ss", $password, $user_id);
+        if (password_verify($password, $hashed_password)) {
+            $_SESSION['user_id'] = $id;
+            $_SESSION['username'] = $db_username;
+            $_SESSION['role'] = $role;
 
-//This will execute and get the result.........
-$stmt->execute();
-$result = $stmt->get_result();
-
-
-
-
-
-
-
+            // Redirect immediately, no echo before header
+            switch ($role) {
+    case 'admin':
+        header("Location: http://localhost/court_system/assets/pages/admin.html");
+        exit;
+    case 'judge':
+        header("Location: http://localhost/court_system/assets/pages/judge.html");
+        exit;
+    case 'courtAssistant':
+        header("Location: http://localhost/court_system/assets/pages/ca.html");
+        exit;
+    default:
+        header("Location: http://localhost/court_system/assets/pages/user_dashboard.php");
+        exit;
+    }
 
 
+        } else {
+            echo "Invalid password.";
+        }
+    } else {
+        echo "No account found with that username.";
+    }
 
+    $stmt->close();
+}
 
-
+$conn->close();
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Login</title>
+</head>
+<body>
+    <h2>User Login</h2>
+    <form method="POST" action="">
+        <label>Username:</label><br>
+        <input type="text" name="username" required><br><br>
+
+        <label>Password:</label><br>
+        <input type="password" name="password" required><br><br>
+
+        <button type="submit">Login</button>
+        <p><a href="http://localhost/court_system/assets/stuff/forgot_password.php">Forgot Password?</a></p>
+
+    </form>
+</body>
+</html>
