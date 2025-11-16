@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update->execute();
         $update->close();
 
-        // Reset link (in real system, email this link)
+        // Reset link 
         $reset_link = "http://localhost/court_system/assets/stuff/reset_password.php?token=$token";
 
         echo "A password reset link has been generated:<br>";
@@ -55,13 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $conn->close();
 ?>
 
+<!--Forgot Password Form-->
 <h2>Forgot Password</h2>
 <form method="POST" action="">
     <label>Username:</label><br>
     <input type="text" name="username" required><br><br>
-
     <label>Email:</label><br>
     <input type="email" name="email" required><br><br>
-
     <button type="submit">Send Reset Link</button>
 </form>

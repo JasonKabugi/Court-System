@@ -34,7 +34,7 @@ function create_tables($conn) {
         user_id INT PRIMARY KEY,
         court VARCHAR(255) NOT NULL,
         assigned_cases INT DEFAULT 0,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (username) REFERENCES users(username)
     );
 
     -- COURT ASSISTANT TABLE
@@ -43,8 +43,8 @@ function create_tables($conn) {
         court VARCHAR(255) NOT NULL,
         total_cases_handled INT DEFAULT 0,
         judge_id INT UNIQUE,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (judge_id) REFERENCES judges(user_id)
+        FOREIGN KEY (username) REFERENCES users(username),
+        FOREIGN KEY (judge_id) REFERENCES judges(username)
     );
 
     -- ADMIN TABLE
@@ -52,7 +52,7 @@ function create_tables($conn) {
         user_id INT PRIMARY KEY,
         full_name VARCHAR(255) NOT NULL,
         court VARCHAR(255) NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (username) REFERENCES users(username)
     );
 
     -- CASES TABLE
@@ -66,8 +66,8 @@ function create_tables($conn) {
         outcome VARCHAR(255),
         case_date DATE NOT NULL,
         case_time VARCHAR(255) NOT NULL,
-        FOREIGN KEY (judge_id) REFERENCES judges(user_id),
-        FOREIGN KEY (assistant_id) REFERENCES courtAssistant(user_id)
+        FOREIGN KEY (judge_id) REFERENCES judges(username),
+        FOREIGN KEY (assistant_id) REFERENCES courtAssistant(username)
     );
 
     -- CAUSE LIST TABLE
@@ -81,8 +81,8 @@ function create_tables($conn) {
         assistant_id INT NOT NULL,
         time VARCHAR(255) NOT NULL,
         mention VARCHAR(255) NOT NULL,
-        FOREIGN KEY (judge_id) REFERENCES judges(user_id),
-        FOREIGN KEY (assistant_id) REFERENCES courtAssistant(user_id)
+        FOREIGN KEY (judge_id) REFERENCES judges(username),
+        FOREIGN KEY (assistant_id) REFERENCES courtAssistant(username)
     );
 
     -- SYSTEM LOGS TABLE
@@ -93,7 +93,7 @@ function create_tables($conn) {
         table_name VARCHAR(255),
         record_id INT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (username) REFERENCES users(username)
     );
     ";
 

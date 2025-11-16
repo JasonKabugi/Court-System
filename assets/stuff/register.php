@@ -73,13 +73,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         switch ($role) {
             case 'judge':
-                $conn->query("INSERT INTO judges (user_id, court) VALUES ($new_user_id, 'Not assigned')");
+                $conn->query("INSERT INTO judges (username, court) VALUES ('$username', 'Not assigned')");
                 break;
             case 'courtAssistant':
-                $conn->query("INSERT INTO courtAssistant (user_id, court) VALUES ($new_user_id, 'Not assigned')");
+                $conn->query("INSERT INTO courtAssistant (username, court) VALUES ('$username', 'Not assigned')");
                 break;
             case 'admin':
-                $conn->query("INSERT INTO admin (user_id, full_name, court) VALUES ($new_user_id, 'New Admin', 'Main Court')");
+                $conn->query("INSERT INTO admin (username, full_name, court) VALUES ('$username', 'New Admin', 'Main Court')");
                 break;
         }
 
