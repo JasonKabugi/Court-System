@@ -7,16 +7,13 @@ error_reporting(E_ALL);
 session_start();
 
 // DB connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "court_db";
-
-$conn = new mysqli($servername, $username, $password, $dbname);
+$conn = new mysqli("localhost", "root", "", "court_db");
 if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // Read inputs
     $court = trim($_POST['court'] ?? '');
     $case_type = trim($_POST['case_type'] ?? '');
     $description = trim($_POST['description'] ?? '');
@@ -29,18 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $case_date = trim($_POST['case_date'] ?? '');
     $case_time = trim($_POST['case_time'] ?? '');
 
-    // Check required fields
+    // Required fields check
     if (
         empty($court) || empty($case_type) || empty($description) ||
         empty($attorney) || empty($initiator) || empty($defendant) ||
-        empty($judge_id) || empty($assistant_id) || empty($case_date) || empty($case_time)
+        empty($judge_id) || empty($assistant_id) ||
+        empty($case_date) || empty($case_time)
     ) {
         echo "<p style='color:red;'>Please fill all required fields.</p>";
     } else {
+
+        // Insert case
         $stmt = $conn->prepare("
-            INSERT INTO cases (court, case_type, description, attorney, initiator, defendant, judge_id, assistant_id, outcome, case_date, case_time)
+            INSERT INTO cases (
+                court, case_type, description, attorney, initiator, defendant,
+                judge_id, assistant_id, outcome, case_date, case_time
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+
         $stmt->bind_param(
             "sssssssssss",
             $court, $case_type, $description, $attorney,
@@ -48,22 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $outcome, $case_date, $case_time
         );
 
-        if ($stmt->execute()) {
+        $success = $stmt->execute();
+
+        if ($success) {
+
+            // Update counters for judge & CA
+            $conn->query("UPDATE judges SET assigned_cases = assigned_cases + 1 WHERE username = '$judge_id'");
+            $conn->query("UPDATE courtAssistant SET total_cases_handled = total_cases_handled + 1 WHERE username = '$assistant_id'");
+
             echo "<p style='color:green;'>Case added successfully!</p>";
         } else {
             echo "<p style='color:red;'>Error adding case: " . $stmt->error . "</p>";
         }
-
-         if ($stmt->execute()) {
-            // Increment counters
-            $conn->query("UPDATE judges SET assigned_cases = assigned_cases + 1 WHERE username = '$judge_id'");
-            $conn->query("UPDATE courtAssistant SET total_cases_handled = total_cases_handled + 1 WHERE username = '$assistant_id'");
-
-            echo "<p style='color:green;'>Case added successfully! Judge and CA counters updated.</p>";
-        } else {
-            echo "<p style='color:red;'>Error adding case: " . $stmt->error . "</p>";
-        }
-
 
         $stmt->close();
     }
@@ -71,7 +71,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $conn->close();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,6 +79,7 @@ $conn->close();
 </head>
 <body>
     <h2>Add New Case</h2>
+
     <form method="POST" action="">
         <h1><b>SMALL CLAIMS COURT</b></h1>
 

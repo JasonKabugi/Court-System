@@ -40,13 +40,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             // Redirect immediately, no echo before header
             switch ($role) {
     case 'admin':
-        header("Location: http://localhost/court_system/assets/pages/admin.html");
+        header("Location: http://localhost/court_system/assets/pages/admin.php");
         exit;
     case 'judge':
-        header("Location: http://localhost/court_system/assets/pages/judge.html");
+        header("Location: http://localhost/court_system/assets/pages/judge.php");
         exit;
     case 'courtAssistant':
-        header("Location: http://localhost/court_system/assets/pages/ca.html");
+        header("Location: http://localhost/court_system/assets/pages/ca.php");
         exit;
     default:
         header("Location: http://localhost/court_system/assets/pages/user_dashboard.php");
