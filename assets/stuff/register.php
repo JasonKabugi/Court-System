@@ -15,8 +15,11 @@ if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 
 // Start session & assume admin logged in for testing
 session_start();
-$_SESSION['role'] = 'admin'; // remove in production, depends on your login system
+$_SESSION['role'] = 'admin'; 
 
+// Variable to store messages for the UI
+$message = "";
+$messageType = ""; // 'success' or 'error'
 
 // Utility: Generate unique usernames
 function generateUniqueUsername($conn, $role) {
@@ -59,66 +62,194 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $role = trim($role);
 
     if (empty($email) || empty($password) || empty($role)) {
-        die("Please fill all required fields.");
-    }
-
-    $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-    $username = generateUniqueUsername($conn, $role);
-
-    $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
-
-    if ($stmt->execute()) {
-        $new_user_id = $stmt->insert_id;
-
-        switch ($role) {
-            case 'judge':
-                $conn->query("INSERT INTO judges (username, court) VALUES ('$username', 'Not assigned')");
-                break;
-            case 'courtAssistant':
-                $conn->query("INSERT INTO courtAssistant (username, court) VALUES ('$username', 'Not assigned')");
-                break;
-            case 'admin':
-                $conn->query("INSERT INTO admin (username, full_name, court) VALUES ('$username', 'New Admin', 'Main Court')");
-                break;
-        }
-
-        echo "User registered successfully.<br>Generated Username: <strong>$username</strong>";
+        $message = "Please fill all required fields.";
+        $messageType = "error";
     } else {
-        echo "Error registering user: " . $conn->error;
-    }
+        $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+        $username = generateUniqueUsername($conn, $role);
 
-    $stmt->close();
+        $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
+
+        if ($stmt->execute()) {
+            $new_user_id = $stmt->insert_id;
+
+            // Handle role-specific tables
+            switch ($role) {
+                case 'judge':
+                    $conn->query("INSERT INTO judges (username, court) VALUES ('$username', 'Not assigned')");
+                    break;
+                case 'courtAssistant':
+                    $conn->query("INSERT INTO courtAssistant (username, court) VALUES ('$username', 'Not assigned')");
+                    break;
+                case 'admin':
+                    $conn->query("INSERT INTO admin (username, full_name, court) VALUES ('$username', 'New Admin', 'Main Court')");
+                    break;
+            }
+
+            $message = "User registered successfully!<br>Username: <strong>$username</strong>";
+            $messageType = "success";
+        } else {
+            $message = "Error registering user: " . $conn->error;
+            $messageType = "error";
+        }
+        $stmt->close();
+    }
 }
 
 $conn->close();
 ?>
 
-<!--Registration Form-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register User</title>
+    <style>
+        /* Global Reset & Font */
+        * {
+            box_sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* Card Container */
+        .register-container {
+            background: white;
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .register-container h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #028d30ff; /* Dark Navy */
+            font-weight: 600;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #028d30ff;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        input[type="email"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+            background-color: #fff;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #ffc107;
+            outline: none;
+            box-shadow: 0 0 5px rgba(191, 219, 52, 1);
+        }
+
+        /* Button */
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #028d30ff; /* Navy Blue */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            background-color: #ffc107;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .alert.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
 <body>
-    <h2>Register a New User</h2>
-    <form method="POST" action="">
-        <label>Email:</label><br>
-        <input type="email" name="email" required><br><br>
 
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
+    <div class="register-container">
+        <h2>Register A New User</h2>
 
-        <label>Role:</label><br>
-        <select name="role" required>
-            <option value="judge">Judge</option>
-            <option value="courtAssistant">Court Assistant</option>
-            <option value="admin">Admin</option>
-            <option value="user">User</option>
-        </select><br><br>
+        <?php if (!empty($message)): ?>
+            <div class="alert <?php echo $messageType; ?>">
+                <?php echo $message; ?>
+            </div>
+        <?php endif; ?>
 
-        <button type="submit">Register User</button>
-    </form>
+        <form method="POST" action="">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="role">Assign Role</label>
+                <select id="role" name="role" required>
+                    <option value="" disabled selected>Select a role...</option>
+                    <option value="judge">Judge</option>
+                    <option value="courtAssistant">Court Assistant</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-submit">Register User</button>
+        </form>
+    </div>
+
 </body>
 </html>
