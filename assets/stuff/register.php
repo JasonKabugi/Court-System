@@ -51,49 +51,93 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     die("Access denied: Only admins can register users.");
 }
 
+// Function to validate password strength
+function validatePassword($password) {
+    // Requirements: 8-15 characters, uppercase, lowercase, number, special character
+    $minLength = 8;
+    $maxLength = 15;
+    
+    if (strlen($password) < $minLength || strlen($password) > $maxLength) {
+        return "Password must be at least 8-15 characters long, include a mix of uppercase and lowercase letters, numbers, and special characters";
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        return "Password must be at least 8-15 characters long, include a mix of uppercase and lowercase letters, numbers, and special characters.";
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        return "Password must be at least 8-15 characters long, include a mix of uppercase and lowercase letters, numbers, and special characters.";
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        return "Password must be at least 8-15 characters long, include a mix of uppercase and lowercase letters, numbers, and special characters.";
+    }
+    if (!preg_match('/[^a-zA-Z0-9\s]/', $password)) {
+        return "Password must be at least 8-15 characters long, include a mix of uppercase and lowercase letters, numbers, and special characters.";
+    }
+    return true; // Password is strong
+}
+
+
 // Handle form submission
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? ''; // New variable
     $role = $_POST['role'] ?? '';
 
     $email = trim($email);
     $password = trim($password);
+    $confirm_password = trim($confirm_password); // Trim new variable
     $role = trim($role);
 
-    if (empty($email) || empty($password) || empty($role)) {
+    if (empty($email) || empty($password) || empty($confirm_password) || empty($role)) {
         $message = "Please fill all required fields.";
         $messageType = "error";
+    } elseif ($password !== $confirm_password) { // Check for password match
+        $message = "Password and Confirm Password do not match.";
+        $messageType = "error";
     } else {
-        $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-        $username = generateUniqueUsername($conn, $role);
+        $validationResult = validatePassword($password); // Validate password strength
 
-        $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
-
-        if ($stmt->execute()) {
-            $new_user_id = $stmt->insert_id;
-
-            // Handle role-specific tables
-            switch ($role) {
-                case 'judge':
-                    $conn->query("INSERT INTO judges (username, court) VALUES ('$username', 'Not assigned')");
-                    break;
-                case 'courtAssistant':
-                    $conn->query("INSERT INTO courtAssistant (username, court) VALUES ('$username', 'Not assigned')");
-                    break;
-                case 'admin':
-                    $conn->query("INSERT INTO admin (username, full_name, court) VALUES ('$username', 'New Admin', 'Main Court')");
-                    break;
-            }
-
-            $message = "User registered successfully!<br>Username: <strong>$username</strong>";
-            $messageType = "success";
-        } else {
-            $message = "Error registering user: " . $conn->error;
+        if ($validationResult !== true) {
+            // Password is not strong enough
+            $message = "Registration failed: " . $validationResult;
             $messageType = "error";
+        } else {
+            // Strong password and passwords match, proceed with registration
+            $hashed_password = password_hash($password, PASSWORD_BCRYPT);
+            $username = generateUniqueUsername($conn, $role);
+
+            $stmt = $conn->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
+
+            if ($stmt->execute()) {
+                $new_user_id = $stmt->insert_id;
+
+                // Handle role-specific tables - NOTE: Using query() is vulnerable to SQL injection here,
+                // but kept for minimum change based on original code structure. Prepared statements are recommended.
+                switch ($role) {
+                    case 'judge':
+                        // Warning: Potential SQL Injection in original code's approach.
+                        // For a secure implementation, this should also use prepared statements.
+                        $conn->query("INSERT INTO judges (username, court) VALUES ('$username', 'Not assigned')");
+                        break;
+                    case 'courtAssistant':
+                        // Warning: Potential SQL Injection in original code's approach.
+                        $conn->query("INSERT INTO courtAssistant (username, court) VALUES ('$username', 'Not assigned')");
+                        break;
+                    case 'admin':
+                        // Warning: Potential SQL Injection in original code's approach.
+                        $conn->query("INSERT INTO admin (username, full_name, court) VALUES ('$username', 'New Admin', 'Main Court')");
+                        break;
+                }
+
+                $message = "User registered successfully!<br>Username: <strong>$username</strong>";
+                $messageType = "success";
+            } else {
+                $message = "Error registering user: " . $conn->error;
+                $messageType = "error";
+            }
+            $stmt->close();
         }
-        $stmt->close();
     }
 }
 
@@ -234,7 +278,12 @@ $conn->close();
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter password" required>
+                <input type="password" id="password" name="password" placeholder="Enter password (8-15 chars, mixed case, number, special char)" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm password" required>
             </div>
 
             <div class="form-group">
