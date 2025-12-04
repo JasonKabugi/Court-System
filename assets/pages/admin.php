@@ -52,16 +52,57 @@ $assistant_sql = "
 ";
 $assistant_cases = $conn->query($assistant_sql);
 
-//Today's CauseList
-$today = date("d-m-y");
+// --- REPORT / CAUSE LIST LOGIC ---
+
+// 1. Get the selected period from the URL, default to 'today'
+$report_period = $_GET['period'] ?? 'today';
+
+// 2. Set the End Date (Always Today)
+$end_date = date("Y-m-d");
+$start_date = $end_date; // Default start date is today
+$report_title = "Today's Cause List";
+
+// 3. Calculate Start Date based on selection
+switch ($report_period) {
+    case '7days':
+        $start_date = date("Y-m-d", strtotime("-7 days"));
+        $report_title = "Cause List Report (Last 7 Days)";
+        break;
+    case '1month':
+        $start_date = date("Y-m-d", strtotime("-1 month"));
+        $report_title = "Cause List Report (Last 1 Month)";
+        break;
+    case '3months':
+        $start_date = date("Y-m-d", strtotime("-3 months"));
+        $report_title = "Cause List Report (Last 3 Months)";
+        break;
+    case '5months':
+        $start_date = date("Y-m-d", strtotime("-5 months"));
+        $report_title = "Cause List Report (Last 5 Months)";
+        break;
+    case '7months':
+        $start_date = date("Y-m-d", strtotime("-7 months"));
+        $report_title = "Cause List Report (Last 7 Months)";
+        break;
+    case '1year':
+        $start_date = date("Y-m-d", strtotime("-1 year"));
+        $report_title = "Cause List Report (Last 1 Year)";
+        break;
+    default:
+        $start_date = $end_date; // 'today'
+        $report_title = "Today's Cause List";
+        break;
+}
+
+// 4. Update Query to use BETWEEN range
+// Note: We use Y-m-d format for SQL compatibility
 $causelist = $conn->query("
     SELECT c.id, c.case_type, c.attorney, c.initiator, c.defendant, c.status, c.case_date, j.username AS judge_name
     FROM cases c
     LEFT JOIN judges j ON c.judge_id = j.username
-    WHERE c.case_date = '$today'
-    ORDER BY c.case_time ASC, c.id ASC
+    WHERE c.case_date BETWEEN '$start_date' AND '$end_date'
+    ORDER BY c.case_date DESC, c.case_time ASC
 ");
-
 
 ?>
 <!DOCTYPE html>
@@ -277,6 +318,25 @@ $causelist = $conn->query("
             margin: 10px 0;
             font-size: 1.1rem;
         }
+
+        /* --- REPORT FILTER BOX STYLES --- */
+        .report-filter {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .report-filter select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-family: inherit;
+        }
     </style>
 </head>
 <body>
@@ -310,7 +370,7 @@ $causelist = $conn->query("
     <td><?= htmlspecialchars($u['username']) ?></td>
     <td><?= $u['role'] ?></td>
     <td>
-        <a href="reset_password.php?id=<?= $u['id'] ?>">Reset Password</a>
+        <a href="https://localhost/court_system/assets/stuff/admin_reset_password.php?id=<?= $u['id'] ?>">Reset Password</a>
         &nbsp;|&nbsp;
         <a href="admin.php?delete_user=<?= $u['id'] ?>" onclick="return confirm('Delete user?')">Delete</a>
     </td>
@@ -344,9 +404,24 @@ $causelist = $conn->query("
 <?php endwhile; ?>
 </table>
 
-<h2>Today's Cause List (<?= $today ?>)</h2>
+<h2><?= htmlspecialchars($report_title) ?></h2>
+
+<form method="GET" class="report-filter">
+    <label><strong>Generate Report For:</strong></label>
+    <select name="period">
+        <option value="today" <?= $report_period == 'today' ? 'selected' : '' ?>>Today</option>
+        <option value="7days" <?= $report_period == '7days' ? 'selected' : '' ?>>Last 7 Days</option>
+        <option value="1month" <?= $report_period == '1month' ? 'selected' : '' ?>>Last 1 Month</option>
+        <option value="3months" <?= $report_period == '3months' ? 'selected' : '' ?>>Last 3 Months</option>
+        <option value="5months" <?= $report_period == '5months' ? 'selected' : '' ?>>Last 5 Months</option>
+        <option value="7months" <?= $report_period == '7months' ? 'selected' : '' ?>>Last 7 Months</option>
+        <option value="1year" <?= $report_period == '1year' ? 'selected' : '' ?>>Last 1 Year</option>
+    </select>
+    <button type="submit" class="btn">Generate Report</button>
+</form>
+
 <?php if ($causelist->num_rows === 0): ?>
-<p class="p-text">No cases listed for today.</p>
+<p class="p-text">No cases found for this period.</p>
 <?php else: ?>
 <table>
 <tr><th>ID</th><th>Type</th><th>Attorney</th><th>Initiator</th><th>Defendant</th><th>Status</th><th>Date</th><th>Judge</th></tr>
@@ -364,7 +439,6 @@ $causelist = $conn->query("
 <?php endwhile; ?>
 </table>
 <?php endif; ?>
-
 </div>
 </body>
 </html>

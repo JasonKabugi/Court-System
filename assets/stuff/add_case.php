@@ -10,6 +10,12 @@ session_start();
 $conn = new mysqli("localhost", "root", "", "court_db");
 if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
 
+// Variable to store the current date for comparison
+$current_date = date("Y-m-d");
+
+// Variable to hold the case date input if validation fails, to keep form populated
+$input_case_date = ''; 
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -25,19 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $outcome = trim($_POST['outcome'] ?? '');
     $case_date = trim($_POST['case_date'] ?? '');
     $case_time = trim($_POST['case_time'] ?? '');
+    
+    $input_case_date = $case_date; // Store input for form repopulation
 
-    // Required fields check
+    // --- 1. REQUIRED FIELDS CHECK ---
     if (
         empty($court) || empty($case_type) || empty($description) ||
         empty($attorney) || empty($initiator) || empty($defendant) ||
         empty($judge_id) || empty($assistant_id) ||
         empty($case_date) || empty($case_time)
     ) {
-        // Echo using the styled error class
         echo "<p class='error-message'>Please fill all required fields.</p>";
+    
+    // --- 2. INTEGRITY CHECK: ONLY ALLOW TODAY'S DATE ---
+    } elseif ($case_date !== $current_date) {
+        echo "<p class='error-message'>Integrity Error: Cases can only be filed for today's date ({$current_date}). Backdating is not permitted.</p>";
+        
     } else {
-
-        // Insert case using Prepared Statement (Good Practice)
+        // --- PROCEED WITH SECURE INSERTION ---
+        
         $stmt = $conn->prepare("
             INSERT INTO cases (
                 court, case_type, description, attorney, initiator, defendant,
@@ -58,14 +70,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($success) {
 
             // Update counters for judge & CA
-            // NOTE: For better security, consider changing these to prepared statements as well.
             $conn->query("UPDATE judges SET assigned_cases = assigned_cases + 1 WHERE username = '$judge_id'");
             $conn->query("UPDATE courtAssistant SET total_cases_handled = total_cases_handled + 1 WHERE username = '$assistant_id'");
 
-            // Echo using the styled success class
-            echo "<p class='success-message'>Case added successfully!</p>";
+            echo "<p class='success-message'>Case added successfully! Case filed for {$current_date}.</p>";
+            
+            // Clear the input field after success
+            $input_case_date = '';
+
         } else {
-            // Echo using the styled error class
             echo "<p class='error-message'>Error adding case: " . $stmt->error . "</p>";
         }
 
@@ -98,7 +111,7 @@ $conn->close();
             margin: 0;
             padding: 0;
             
-            /* Kenyan Flag Background Styles */
+            /* Background styles */
             background-image: url("/court_system/assets/images/flag.png"); 
             background-size: cover;
             background-position: center center;
@@ -150,6 +163,8 @@ $conn->close();
             flex-direction: column;
             align-items: center;
             padding: 40px 20px;
+            min-height: calc(100vh - 80px); /* Adjust height */
+            justify-content: center;
         }
 
         /* 2. Form Container (The Centered White Card) */
@@ -182,8 +197,6 @@ $conn->close();
             border-bottom: 2px solid var(--color-secondary);
         }
         
-        /* Removed h1::after rule to eliminate stars */
-
         /* Form Elements */
         label {
             display: block;
@@ -270,6 +283,21 @@ $conn->close();
             font-weight: 600;
         }
     </style>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dateInput = document.getElementById('case_date');
+            
+            // Set the minimum selectable date to today (YYYY-MM-DD)
+            dateInput.min = "<?php echo $current_date; ?>";
+            
+            // Set the maximum selectable date to today (to restrict future dates)
+            dateInput.max = "<?php echo $current_date; ?>";
+            
+            // Set the default value to today's date
+            dateInput.value = "<?php echo $current_date; ?>";
+        });
+    </script>
 </head>
 <body>
     
@@ -282,8 +310,6 @@ $conn->close();
     </div>
 
     <div class="main-container">
-
-       
 
         <form method="POST" action="">
             <h1><b>SMALL CLAIMS COURT FILING</b></h1>
@@ -330,7 +356,7 @@ $conn->close();
 
             <div class="two-column">
                 <div>
-                    <label for="case_date">Case Date:</label>
+                    <label for="case_date">Case Date (Today: <?php echo $current_date; ?>):</label>
                     <input type="date" id="case_date" name="case_date" required>
                 </div>
                 <div>

@@ -112,8 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($stmt->execute()) {
                 $new_user_id = $stmt->insert_id;
 
-                // Handle role-specific tables - NOTE: Using query() is vulnerable to SQL injection here,
-                // but kept for minimum change based on original code structure. Prepared statements are recommended.
+                // Handle role-specific tables - NOTE: Using query() is vulnerable to SQL injection here, but kept for minimum change based on original code structure. Prepared statements are recommended.
                 switch ($role) {
                     case 'judge':
                         // Warning: Potential SQL Injection in original code's approach.
@@ -166,6 +165,10 @@ $conn->close();
             align-items: center;
             min-height: 100vh;
             color: #333;
+             background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)), 
+                url("/court_system/assets/images/register.jpg"); 
+            background-size: cover;
         }
 
         /* Card Container */
