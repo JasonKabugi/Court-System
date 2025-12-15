@@ -37,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt->bind_result($id, $db_username, $hashed_password, $role);
             $stmt->fetch();
 
-            if (password_verify($password, $hashed_password)) {
+            if (password_verify($password, (string)$hashed_password)) {
                 $_SESSION['user_id'] = $id;
                 $_SESSION['username'] = $db_username;
                 $_SESSION['role'] = $role;

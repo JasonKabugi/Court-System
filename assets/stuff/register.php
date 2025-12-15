@@ -152,7 +152,7 @@ $conn->close();
     <style>
         /* Global Reset & Font */
         * {
-            box_sizing: border-box;
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
